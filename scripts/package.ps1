@@ -60,7 +60,31 @@ Copy-Item -LiteralPath $clientDll -Destination $clientDest -Force
 Copy-Item -LiteralPath $serverDll -Destination $serverDest -Force
 Copy-Item -LiteralPath (Join-Path $resolvedRoot "README.md") -Destination (Join-Path $stageRoot "README.md") -Force
 
-Compress-Archive -Path (Join-Path $stageRoot "*") -DestinationPath $zipPath -CompressionLevel Optimal
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+$zipStream = [System.IO.File]::Open($zipPath, [System.IO.FileMode]::CreateNew)
+try {
+    $archive = [System.IO.Compression.ZipArchive]::new($zipStream, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        Get-ChildItem -LiteralPath $stageRoot -Recurse -File | ForEach-Object {
+            $relativePath = $_.FullName.Substring($stageRoot.Length).TrimStart([char[]]@('\', '/'))
+            $entryName = $relativePath -replace '\\', '/'
+            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                $archive,
+                $_.FullName,
+                $entryName,
+                [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+finally {
+    $zipStream.Dispose()
+}
+
 Remove-Item -LiteralPath $stageRoot -Recurse -Force
 
 Write-Host "Created package: $(Join-Path $OutputDir $packageFileName)"
