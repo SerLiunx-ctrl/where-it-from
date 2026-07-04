@@ -1,0 +1,11 @@
+bin/
+obj/
+dist/
+.vs/
+.idea/
+*.user
+*.suo
+*.nupkg
+*.zip
+BepInEx/
+SPT/
