@@ -58,7 +58,6 @@ New-Item -ItemType Directory -Force -Path $serverDest | Out-Null
 
 Copy-Item -LiteralPath $clientDll -Destination $clientDest -Force
 Copy-Item -LiteralPath $serverDll -Destination $serverDest -Force
-Copy-Item -LiteralPath (Join-Path $resolvedRoot "README.md") -Destination (Join-Path $stageRoot "README.md") -Force
 
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
