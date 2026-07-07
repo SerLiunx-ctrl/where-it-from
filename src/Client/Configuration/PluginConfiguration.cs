@@ -73,6 +73,14 @@ public class PluginConfiguration
             false,
             "Underline the mod name.");
 
+        ModNameMaxLength = config.Bind(
+            "Mod Name Style",
+            "ModNameMaxLength",
+            24,
+            new ConfigDescription(
+                "Maximum displayed mod name length. Set to 0 to disable truncation.",
+                new AcceptableValueRange<int>(0, 80)));
+
         Placement = config.Bind(
             "Layout",
             "Placement",
@@ -143,6 +151,7 @@ public class PluginConfiguration
     public ConfigEntry<bool> ModNameBold { get; }
     public ConfigEntry<bool> ModNameItalic { get; }
     public ConfigEntry<bool> ModNameUnderline { get; }
+    public ConfigEntry<int> ModNameMaxLength { get; }
     public ConfigEntry<TooltipPlacement> Placement { get; }
     public ConfigEntry<bool> SeparatorEnabled { get; }
     public ConfigEntry<string> SeparatorText { get; }

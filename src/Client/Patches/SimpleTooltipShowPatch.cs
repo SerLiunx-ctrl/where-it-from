@@ -103,7 +103,8 @@ public class SimpleTooltipShowPatch : ModulePatch
     private static string BuildSourceLine(ItemSourceEntry? source)
     {
         var label = SanitizeRichText(Plugin.Settings.Label.Value);
-        var modName = SanitizeRichText(source?.ModName ?? Plugin.Settings.UnknownText.Value);
+        var rawModName = source?.ModName ?? Plugin.Settings.UnknownText.Value;
+        var modName = SanitizeRichText(TruncateText(rawModName, Plugin.Settings.ModNameMaxLength.Value));
         var styledLabel = ApplyStyle(
             label,
             Plugin.Settings.PrefixColor.Value,
@@ -122,6 +123,21 @@ public class SimpleTooltipShowPatch : ModulePatch
         var prefixGap = string.IsNullOrEmpty(label) ? string.Empty : " ";
 
         return $"{styledLabel}{prefixGap}{styledModName}{confidence}";
+    }
+
+    private static string TruncateText(string text, int maxLength)
+    {
+        if (maxLength <= 0 || text.Length <= maxLength)
+        {
+            return text;
+        }
+
+        if (maxLength <= Ellipsis.Length)
+        {
+            return Ellipsis.Substring(0, maxLength);
+        }
+
+        return text.Substring(0, maxLength - Ellipsis.Length) + Ellipsis;
     }
 
     private static bool IsItemExamined(Item item)
@@ -433,4 +449,6 @@ public class SimpleTooltipShowPatch : ModulePatch
         "Known",
         "Examined"
     ];
+
+    private const string Ellipsis = "...";
 }
