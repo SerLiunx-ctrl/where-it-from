@@ -79,6 +79,7 @@ Press `F12` in game and adjust the `WhereItFrom` BepInEx settings:
 - choose the prefix text. The default is empty, so only the mod name is shown
 - style the prefix and mod name separately with RGBA color sliders (`PrefixColorRGBA`, `ModNameColorRGBA`), bold, italics, and underline
 - limit long mod names with `ModNameMaxLength`; set it to `0` to disable truncation
+- prevent long source lines from wrapping with `PreventSourceLineWrapping`, and adjust `TooltipMaxWidth` if a full name still needs more room
 - place the source block at the bottom or top of the tooltip
 - enable/disable the separator line and change its text/color (`SeparatorColorRGBA`)
 - set `SeparatorText` to empty or spaces if you only want a blank line

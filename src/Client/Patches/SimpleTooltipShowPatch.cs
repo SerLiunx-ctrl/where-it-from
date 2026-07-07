@@ -26,7 +26,7 @@ public class SimpleTooltipShowPatch : ModulePatch
 
     [PatchPrefix]
     [HarmonyPriority(Priority.Last)]
-    public static void PatchPrefix(ref string text, Vector2? offset, ref float delay, float? maxWidth)
+    public static void PatchPrefix(ref string text, Vector2? offset, ref float delay, ref float? maxWidth)
     {
         try
         {
@@ -56,12 +56,14 @@ public class SimpleTooltipShowPatch : ModulePatch
             if (ItemSourceMapService.TryGetSource(templateId, out var source) && source is not null)
             {
                 text = InsertSourceBlock(text, source);
+                EnsureTooltipWidth(ref maxWidth);
                 return;
             }
 
             if (Plugin.Settings.ShowUnknown.Value)
             {
                 text = InsertSourceBlock(text, null);
+                EnsureTooltipWidth(ref maxWidth);
             }
         }
         catch (Exception exception)
@@ -122,7 +124,24 @@ public class SimpleTooltipShowPatch : ModulePatch
             : string.Empty;
         var prefixGap = string.IsNullOrEmpty(label) ? string.Empty : " ";
 
-        return $"{styledLabel}{prefixGap}{styledModName}{confidence}";
+        var line = $"{styledLabel}{prefixGap}{styledModName}{confidence}";
+        return Plugin.Settings.PreventSourceLineWrapping.Value
+            ? $"<nobr>{line}</nobr>"
+            : line;
+    }
+
+    private static void EnsureTooltipWidth(ref float? maxWidth)
+    {
+        var tooltipMaxWidth = Plugin.Settings.TooltipMaxWidth.Value;
+        if (tooltipMaxWidth <= 0)
+        {
+            return;
+        }
+
+        if (maxWidth is null || maxWidth.Value < tooltipMaxWidth)
+        {
+            maxWidth = tooltipMaxWidth;
+        }
     }
 
     private static string TruncateText(string text, int maxLength)

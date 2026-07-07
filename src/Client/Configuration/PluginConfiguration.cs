@@ -81,6 +81,20 @@ public class PluginConfiguration
                 "Maximum displayed mod name length. Set to 0 to disable truncation.",
                 new AcceptableValueRange<int>(0, 80)));
 
+        PreventSourceLineWrapping = config.Bind(
+            "Layout",
+            "PreventSourceLineWrapping",
+            true,
+            "Prevent the source line from wrapping inside the tooltip.");
+
+        TooltipMaxWidth = config.Bind(
+            "Layout",
+            "TooltipMaxWidth",
+            420,
+            new ConfigDescription(
+                "Tooltip max width requested when the source line is shown. Set to 0 to keep the game's original width.",
+                new AcceptableValueRange<int>(0, 1000)));
+
         Placement = config.Bind(
             "Layout",
             "Placement",
@@ -152,6 +166,8 @@ public class PluginConfiguration
     public ConfigEntry<bool> ModNameItalic { get; }
     public ConfigEntry<bool> ModNameUnderline { get; }
     public ConfigEntry<int> ModNameMaxLength { get; }
+    public ConfigEntry<bool> PreventSourceLineWrapping { get; }
+    public ConfigEntry<int> TooltipMaxWidth { get; }
     public ConfigEntry<TooltipPlacement> Placement { get; }
     public ConfigEntry<bool> SeparatorEnabled { get; }
     public ConfigEntry<string> SeparatorText { get; }
