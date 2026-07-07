@@ -102,7 +102,7 @@ public class SimpleTooltipShowPatch : ModulePatch
             : $"{separatorLine}<br>{line}";
     }
 
-    private static string BuildSourceLine(ItemSourceEntry? source)
+    internal static string BuildSourceLine(ItemSourceEntry? source)
     {
         var label = SanitizeRichText(Plugin.Settings.Label.Value);
         var rawModName = source?.ModName ?? Plugin.Settings.UnknownText.Value;

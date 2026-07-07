@@ -28,7 +28,7 @@ $clientDll = Join-Path $resolvedRoot "src\Client\bin\$Configuration\netstandard2
 
 $resolvedOutputDir = Join-Path $resolvedRoot $OutputDir
 $stageRoot = Join-Path $resolvedOutputDir "package"
-$packageFileName = "WhereItFrom-v1.0.0-SPT4.0.zip"
+$packageFileName = "WhereItFrom-v1.0.1-SPT4.0.zip"
 $zipPath = Join-Path $resolvedOutputDir $packageFileName
 
 New-Item -ItemType Directory -Force -Path $resolvedOutputDir | Out-Null

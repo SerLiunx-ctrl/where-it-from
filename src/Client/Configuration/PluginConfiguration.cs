@@ -19,6 +19,12 @@ public class PluginConfiguration
             true,
             "Append an item source line to hover tooltips.");
 
+        ShowInItemDetails = config.Bind(
+            "General",
+            "ShowInItemDetails",
+            true,
+            "Append an item source line to the item details page.");
+
         Label = config.Bind(
             "General",
             "Label",
@@ -156,6 +162,7 @@ public class PluginConfiguration
     }
 
     public ConfigEntry<bool> Enabled { get; }
+    public ConfigEntry<bool> ShowInItemDetails { get; }
     public ConfigEntry<string> Label { get; }
     public ConfigEntry<Color> PrefixColor { get; }
     public ConfigEntry<bool> PrefixBold { get; }

@@ -7,7 +7,7 @@ using WhereItFrom.Client.State;
 
 namespace WhereItFrom.Client;
 
-[BepInPlugin("com.serliunx.whereitfrom", "WhereItFrom", "1.0.0")]
+[BepInPlugin("com.serliunx.whereitfrom", "WhereItFrom", "1.0.1")]
 [BepInDependency("com.SPT.custom", "4.0.0")]
 [BepInProcess("EscapeFromTarkov.exe")]
 public class Plugin : BaseUnityPlugin
@@ -28,6 +28,7 @@ public class Plugin : BaseUnityPlugin
         new GridItemOnPointerExitPatch().Enable();
         new InventoryScreenClosePatch().Enable();
         new SimpleTooltipShowPatch().Enable();
+        new ItemSpecificationPanelShowPatch().Enable();
 
         Logger.LogInfo("WhereItFrom loaded.");
     }

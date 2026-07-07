@@ -3,7 +3,7 @@
 SPT 4.0 client + server mod that appends an item-source line to item hover tooltips.
 
 Author: SerLiunx
-Version: 1.0.0
+Version: 1.0.1
 
 When the mouse is over an item, the client plugin reads the item template id and appends a line such as:
 
@@ -46,7 +46,7 @@ To create a distributable zip package, run:
 The package is written to:
 
 ```text
-dist/WhereItFrom-v1.0.0-SPT4.0.zip
+dist/WhereItFrom-v1.0.1-SPT4.0.zip
 ```
 
 ## Server Config
@@ -76,6 +76,7 @@ Use `manualMappings` for code-generated items that cannot be found by JSON scann
 Press `F12` in game and adjust the `WhereItFrom` BepInEx settings:
 
 - enable/disable the tooltip line
+- enable/disable the item details page source line with `ShowInItemDetails`
 - choose the prefix text. The default is empty, so only the mod name is shown
 - style the prefix and mod name separately with RGBA color sliders (`PrefixColorRGBA`, `ModNameColorRGBA`), bold, italics, and underline
 - limit long mod names with `ModNameMaxLength`; set it to `0` to disable truncation
