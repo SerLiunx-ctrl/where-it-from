@@ -3,7 +3,7 @@
 SPT 4.0 client + server mod that appends an item-source line to item hover tooltips.
 
 Author: SerLiunx
-Version: 1.0.1
+Version: 1.1.0
 
 When the mouse is over an item, the client plugin reads the item template id and appends a line such as:
 
@@ -19,6 +19,7 @@ The EFT client does not know which server mod created an item. This project ther
 
 - `WhereItFrom.Server.dll` scans `SPT/user/mods` on server startup and exposes a template-id to mod-name map over HTTP.
 - `WhereItFrom.Client.dll` runs in BepInEx, patches the item hover tooltip, caches that map once, and renders the source line.
+- If multiple mods define the same custom item template, the first match remains the primary source and later matches are shown as `Modified by`.
 
 The server uses conservative JSON template scanning. It is designed to avoid false positives where a mod only references a vanilla item id. Items generated entirely in compiled code may need a manual mapping in the generated server config.
 
@@ -46,7 +47,7 @@ To create a distributable zip package, run:
 The package is written to:
 
 ```text
-dist/WhereItFrom-v1.0.1-SPT4.0.zip
+dist/WhereItFrom-v1.1.0-SPT4.0.zip
 ```
 
 ## Server Config
@@ -78,8 +79,11 @@ Press `F12` in game and adjust the `WhereItFrom` BepInEx settings:
 - enable/disable the tooltip line
 - enable/disable the item details page source line with `ShowInItemDetails`
 - choose the prefix text. The default is empty, so only the mod name is shown
+- enable/disable the extra modified-by line with `ShowModifiedBy`
 - style the prefix and mod name separately with RGBA color sliders (`PrefixColorRGBA`, `ModNameColorRGBA`), bold, italics, and underline
 - limit long mod names with `ModNameMaxLength`; set it to `0` to disable truncation
+- control the modified-by label and maximum displayed count with `ModifiedByLabel` and `ModifiedByMaxCount`
+- after the source map loads, each detected mod gets its own `Mods - ...` section where you can set `Hidden` or an `Alias`
 - prevent long source lines from wrapping with `PreventSourceLineWrapping`, and adjust `TooltipMaxWidth` if a full name still needs more room
 - place the source block at the bottom or top of the tooltip
 - enable/disable the separator line and change its text/color (`SeparatorColorRGBA`)

@@ -7,7 +7,7 @@ using WhereItFrom.Client.State;
 
 namespace WhereItFrom.Client;
 
-[BepInPlugin("com.serliunx.whereitfrom", "WhereItFrom", "1.0.1")]
+[BepInPlugin("com.serliunx.whereitfrom", "WhereItFrom", "1.1.0")]
 [BepInDependency("com.SPT.custom", "4.0.0")]
 [BepInProcess("EscapeFromTarkov.exe")]
 public class Plugin : BaseUnityPlugin

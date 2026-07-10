@@ -25,7 +25,14 @@ $serverProject = Join-Path $root "src\Server\WhereItFrom.Server.csproj"
 $clientProject = Join-Path $root "src\Client\WhereItFrom.Client.csproj"
 
 dotnet build $serverProject -c $Configuration
+if ($LASTEXITCODE -ne 0) {
+    throw "Server build failed with exit code $LASTEXITCODE"
+}
+
 dotnet build $clientProject -c $Configuration -p:SPTPath="$resolvedSpt"
+if ($LASTEXITCODE -ne 0) {
+    throw "Client build failed with exit code $LASTEXITCODE"
+}
 
 $serverDll = Join-Path $root "src\Server\bin\$Configuration\net9.0\WhereItFrom.Server.dll"
 $clientDll = Join-Path $root "src\Client\bin\$Configuration\netstandard2.1\WhereItFrom.Client.dll"

@@ -75,18 +75,32 @@ public class ItemSourceMapService(
 
             foreach (var match in ids)
             {
-                if (!finalTemplateIds.Contains(match.TemplateId) || items.ContainsKey(match.TemplateId))
+                if (!finalTemplateIds.Contains(match.TemplateId))
                 {
+                    continue;
+                }
+
+                var contributor = new ItemSourceContributor
+                {
+                    ModName = modName,
+                    ModFolder = modFolder,
+                    SourceFile = Path.GetRelativePath(modFullPath, match.SourceFile),
+                    Confidence = match.Confidence
+                };
+
+                if (items.TryGetValue(match.TemplateId, out var existing))
+                {
+                    AddModifiedBy(existing, contributor);
                     continue;
                 }
 
                 items[match.TemplateId] = new ItemSourceEntry
                 {
                     TemplateId = match.TemplateId,
-                    ModName = modName,
-                    ModFolder = modFolder,
-                    SourceFile = Path.GetRelativePath(modFullPath, match.SourceFile),
-                    Confidence = match.Confidence
+                    ModName = contributor.ModName,
+                    ModFolder = contributor.ModFolder,
+                    SourceFile = contributor.SourceFile,
+                    Confidence = contributor.Confidence
                 };
             }
         }
@@ -99,13 +113,15 @@ public class ItemSourceMapService(
                 continue;
             }
 
+            items.TryGetValue(mapping.Key, out var existing);
             items[mapping.Key] = new ItemSourceEntry
             {
                 TemplateId = mapping.Key,
                 ModName = mapping.Value,
                 ModFolder = "manual",
                 SourceFile = "config.json",
-                Confidence = "manual"
+                Confidence = "manual",
+                ModifiedBy = existing?.ModifiedBy ?? []
             };
         }
 
@@ -115,6 +131,33 @@ public class ItemSourceMapService(
             ScannedModCount = scannedModCount,
             Items = items
         };
+    }
+
+    private static void AddModifiedBy(ItemSourceEntry entry, ItemSourceContributor contributor)
+    {
+        if (IsSameMod(entry.ModFolder, entry.ModName, contributor.ModFolder, contributor.ModName)
+            || entry.ModifiedBy.Any(existing => IsSameMod(
+                existing.ModFolder,
+                existing.ModName,
+                contributor.ModFolder,
+                contributor.ModName)))
+        {
+            return;
+        }
+
+        entry.ModifiedBy.Add(contributor);
+    }
+
+    private static bool IsSameMod(string leftFolder, string leftName, string rightFolder, string rightName)
+    {
+        if (!string.IsNullOrWhiteSpace(leftFolder)
+            && !string.IsNullOrWhiteSpace(rightFolder)
+            && string.Equals(leftFolder, rightFolder, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return string.Equals(leftName, rightName, StringComparison.OrdinalIgnoreCase);
     }
 
     private ServerConfig LoadOrCreateConfig(string ownModPath)

@@ -41,6 +41,11 @@ public class ItemSpecificationPanelShowPatch : ModulePatch
                 return;
             }
 
+            if (source is not null && Plugin.Settings.IsModHidden(source.ModFolder, source.ModName))
+            {
+                return;
+            }
+
             var description = GetDescriptionLabel(__instance);
             if (description is null)
             {

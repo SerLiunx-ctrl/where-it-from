@@ -1,5 +1,6 @@
 using BepInEx.Configuration;
 using UnityEngine;
+using WhereItFrom.Client.Data;
 
 namespace WhereItFrom.Client.Configuration;
 
@@ -11,8 +12,14 @@ public enum TooltipPlacement
 
 public class PluginConfiguration
 {
+    private readonly ConfigFile _config;
+    private readonly object _sourceModSync = new();
+    private readonly Dictionary<string, SourceModConfiguration> _sourceMods = new(StringComparer.OrdinalIgnoreCase);
+
     public PluginConfiguration(ConfigFile config)
     {
+        _config = config;
+
         Enabled = config.Bind(
             "General",
             "Enabled",
@@ -24,6 +31,12 @@ public class PluginConfiguration
             "ShowInItemDetails",
             true,
             "Append an item source line to the item details page.");
+
+        ShowModifiedBy = config.Bind(
+            "General",
+            "ShowModifiedBy",
+            true,
+            "Show other mods that also define the same item template after the primary source.");
 
         Label = config.Bind(
             "General",
@@ -87,6 +100,20 @@ public class PluginConfiguration
                 "Maximum displayed mod name length. Set to 0 to disable truncation.",
                 new AcceptableValueRange<int>(0, 80)));
 
+        ModifiedByLabel = config.Bind(
+            "Mod Name Style",
+            "ModifiedByLabel",
+            "Modified by:",
+            "Text shown before the list of mods that also define this item.");
+
+        ModifiedByMaxCount = config.Bind(
+            "Mod Name Style",
+            "ModifiedByMaxCount",
+            3,
+            new ConfigDescription(
+                "Maximum number of modified-by mods displayed. Set to 0 to show all.",
+                new AcceptableValueRange<int>(0, 20)));
+
         PreventSourceLineWrapping = config.Bind(
             "Layout",
             "PreventSourceLineWrapping",
@@ -146,6 +173,62 @@ public class PluginConfiguration
         MigrateLegacyDefaults();
     }
 
+    public int RegisterSourceMods(IEnumerable<ItemSourceEntry> entries)
+    {
+        var addedCount = 0;
+
+        lock (_sourceModSync)
+        {
+            foreach (var mod in CollectSourceMods(entries))
+            {
+                var key = GetModKey(mod.ModFolder, mod.ModName);
+                if (_sourceMods.ContainsKey(key))
+                {
+                    continue;
+                }
+
+                _sourceMods[key] = BindSourceModConfiguration(mod);
+                addedCount++;
+            }
+        }
+
+        if (addedCount > 0)
+        {
+            _config.Save();
+        }
+
+        return addedCount;
+    }
+
+    public bool IsModHidden(string? modFolder, string? modName)
+    {
+        lock (_sourceModSync)
+        {
+            return TryGetSourceModConfiguration(modFolder, modName, out var mod)
+                && mod.Hidden.Value;
+        }
+    }
+
+    public string GetModDisplayName(string? modFolder, string? modName)
+    {
+        var fallback = string.IsNullOrWhiteSpace(modName)
+            ? modFolder ?? string.Empty
+            : modName;
+
+        lock (_sourceModSync)
+        {
+            if (!TryGetSourceModConfiguration(modFolder, modName, out var mod))
+            {
+                return fallback;
+            }
+
+            var alias = mod.Alias.Value?.Trim() ?? string.Empty;
+            return string.IsNullOrWhiteSpace(alias)
+                ? fallback
+                : alias;
+        }
+    }
+
     private void MigrateLegacyDefaults()
     {
         if (string.Equals(Label.Value, "\u93c9\u30e6\u7c2e", StringComparison.Ordinal)
@@ -163,6 +246,7 @@ public class PluginConfiguration
 
     public ConfigEntry<bool> Enabled { get; }
     public ConfigEntry<bool> ShowInItemDetails { get; }
+    public ConfigEntry<bool> ShowModifiedBy { get; }
     public ConfigEntry<string> Label { get; }
     public ConfigEntry<Color> PrefixColor { get; }
     public ConfigEntry<bool> PrefixBold { get; }
@@ -173,6 +257,8 @@ public class PluginConfiguration
     public ConfigEntry<bool> ModNameItalic { get; }
     public ConfigEntry<bool> ModNameUnderline { get; }
     public ConfigEntry<int> ModNameMaxLength { get; }
+    public ConfigEntry<string> ModifiedByLabel { get; }
+    public ConfigEntry<int> ModifiedByMaxCount { get; }
     public ConfigEntry<bool> PreventSourceLineWrapping { get; }
     public ConfigEntry<int> TooltipMaxWidth { get; }
     public ConfigEntry<TooltipPlacement> Placement { get; }
@@ -183,7 +269,158 @@ public class PluginConfiguration
     public ConfigEntry<string> UnknownText { get; }
     public ConfigEntry<bool> IncludeConfidence { get; }
 
+    private SourceModConfiguration BindSourceModConfiguration(SourceModDescriptor mod)
+    {
+        var section = $"Mods - {SanitizeConfigName(mod.ModName)}";
+        var folder = SanitizeConfigName(mod.ModFolder);
+
+        if (!string.IsNullOrWhiteSpace(folder)
+            && !string.Equals(folder, section.Replace("Mods - ", string.Empty), StringComparison.OrdinalIgnoreCase))
+        {
+            section = $"{section} [{folder}]";
+        }
+
+        var hidden = _config.Bind(
+            section,
+            "Hidden",
+            false,
+            $"Hide source lines for this mod. Folder: {mod.ModFolder}");
+
+        var alias = _config.Bind(
+            section,
+            "Alias",
+            string.Empty,
+            $"Optional display name override. Leave empty to show: {mod.ModName}");
+
+        return new SourceModConfiguration(mod.ModFolder, mod.ModName, hidden, alias);
+    }
+
+    private bool TryGetSourceModConfiguration(
+        string? modFolder,
+        string? modName,
+        out SourceModConfiguration mod)
+    {
+        var primaryKey = GetModKey(modFolder, modName);
+        if (_sourceMods.TryGetValue(primaryKey, out mod))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(modName)
+            && _sourceMods.TryGetValue(GetModKey(null, modName), out mod))
+        {
+            return true;
+        }
+
+        mod = null!;
+        return false;
+    }
+
+    private static IEnumerable<SourceModDescriptor> CollectSourceMods(IEnumerable<ItemSourceEntry> entries)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in entries)
+        {
+            if (TryAdd(entry.ModFolder, entry.ModName, seen, out var mod))
+            {
+                yield return mod;
+            }
+
+            foreach (var contributor in entry.ModifiedBy ?? new List<ItemSourceContributor>())
+            {
+                if (TryAdd(contributor.ModFolder, contributor.ModName, seen, out mod))
+                {
+                    yield return mod;
+                }
+            }
+        }
+    }
+
+    private static bool TryAdd(
+        string? modFolder,
+        string? modName,
+        HashSet<string> seen,
+        out SourceModDescriptor mod)
+    {
+        mod = default;
+
+        if (string.IsNullOrWhiteSpace(modFolder) && string.IsNullOrWhiteSpace(modName))
+        {
+            return false;
+        }
+
+        var key = GetModKey(modFolder, modName);
+        if (!seen.Add(key))
+        {
+            return false;
+        }
+
+        mod = new SourceModDescriptor(
+            modFolder?.Trim() ?? string.Empty,
+            modName?.Trim() ?? modFolder?.Trim() ?? string.Empty);
+        return true;
+    }
+
+    private static string GetModKey(string? modFolder, string? modName)
+    {
+        return string.IsNullOrWhiteSpace(modFolder)
+            ? $"name:{modName?.Trim() ?? string.Empty}"
+            : $"folder:{modFolder.Trim()}";
+    }
+
+    private static string SanitizeConfigName(string value)
+    {
+        var sanitized = value
+            .Replace("\r", " ")
+            .Replace("\n", " ")
+            .Replace("[", "(")
+            .Replace("]", ")")
+            .Trim();
+
+        if (string.IsNullOrWhiteSpace(sanitized))
+        {
+            return "Unknown";
+        }
+
+        return sanitized.Length <= 80
+            ? sanitized
+            : sanitized.Substring(0, 80);
+    }
+
     private static readonly Color DefaultPrefixColor = new(1f, 0.6667f, 1f, 1f);
     private static readonly Color DefaultModNameColor = new(0f, 0.5725f, 0.7608f, 1f);
     private static readonly Color DefaultSeparatorColor = new(0.4667f, 0.4667f, 0.4667f, 1f);
+}
+
+internal readonly struct SourceModDescriptor
+{
+    public SourceModDescriptor(string modFolder, string modName)
+    {
+        ModFolder = modFolder;
+        ModName = modName;
+    }
+
+    public string ModFolder { get; }
+    public string ModName { get; }
+}
+
+internal sealed class SourceModConfiguration
+{
+    public SourceModConfiguration(
+        string modFolder,
+        string modName,
+        ConfigEntry<bool> hidden,
+        ConfigEntry<string> alias)
+    {
+        ModFolder = modFolder;
+        ModName = modName;
+        Hidden = hidden;
+        Alias = alias;
+    }
+
+    public string ModFolder { get; }
+    public string ModName { get; }
+    public ConfigEntry<bool> Hidden { get; }
+    public ConfigEntry<string> Alias { get; }
 }

@@ -55,6 +55,11 @@ public class SimpleTooltipShowPatch : ModulePatch
 
             if (ItemSourceMapService.TryGetSource(templateId, out var source) && source is not null)
             {
+                if (Plugin.Settings.IsModHidden(source.ModFolder, source.ModName))
+                {
+                    return;
+                }
+
                 text = InsertSourceBlock(text, source);
                 EnsureTooltipWidth(ref maxWidth);
                 return;
@@ -104,30 +109,125 @@ public class SimpleTooltipShowPatch : ModulePatch
 
     internal static string BuildSourceLine(ItemSourceEntry? source)
     {
-        var label = SanitizeRichText(Plugin.Settings.Label.Value);
-        var rawModName = source?.ModName ?? Plugin.Settings.UnknownText.Value;
+        var rawModName = source is null
+            ? Plugin.Settings.UnknownText.Value
+            : Plugin.Settings.GetModDisplayName(source.ModFolder, source.ModName);
+        var confidence = Plugin.Settings.IncludeConfidence.Value && source is not null
+            ? $" <size=75%>({SanitizeRichText(source.Confidence)})</size>"
+            : string.Empty;
+        var lines = new List<string>
+        {
+            BuildStyledSourceLine(Plugin.Settings.Label.Value, rawModName, confidence)
+        };
+
+        if (source is not null && Plugin.Settings.ShowModifiedBy.Value)
+        {
+            var modifiedByLine = BuildModifiedByLine(source);
+            if (!string.IsNullOrEmpty(modifiedByLine))
+            {
+                lines.Add(modifiedByLine);
+            }
+        }
+
+        return string.Join("<br>", lines);
+    }
+
+    private static string BuildStyledSourceLine(string rawLabel, string rawModName, string suffix = "")
+    {
+        var label = SanitizeRichText(rawLabel);
         var modName = SanitizeRichText(TruncateText(rawModName, Plugin.Settings.ModNameMaxLength.Value));
-        var styledLabel = ApplyStyle(
-            label,
+        var styledLabel = ApplyLabelStyle(label);
+        var styledModName = ApplyModNameStyle(modName);
+        var prefixGap = string.IsNullOrEmpty(label) ? string.Empty : " ";
+        var line = $"{styledLabel}{prefixGap}{styledModName}{suffix}";
+        return Plugin.Settings.PreventSourceLineWrapping.Value
+            ? $"<nobr>{line}</nobr>"
+            : line;
+    }
+
+    private static string BuildModifiedByLine(ItemSourceEntry source)
+    {
+        var contributors = GetDisplayedModifiers(source);
+        if (contributors.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var label = SanitizeRichText(Plugin.Settings.ModifiedByLabel.Value);
+        var styledLabel = ApplyLabelStyle(label);
+        var maxCount = Plugin.Settings.ModifiedByMaxCount.Value;
+        var displayed = maxCount <= 0
+            ? contributors
+            : contributors.Take(maxCount).ToList();
+        var styledNames = displayed
+            .Select(contributor =>
+            {
+                var displayName = Plugin.Settings.GetModDisplayName(contributor.ModFolder, contributor.ModName);
+                return ApplyModNameStyle(SanitizeRichText(TruncateText(
+                    displayName,
+                    Plugin.Settings.ModNameMaxLength.Value)));
+            });
+        var remainingCount = maxCount <= 0 ? 0 : contributors.Count - displayed.Count;
+        var moreText = remainingCount > 0
+            ? $" <size=75%>(+{remainingCount})</size>"
+            : string.Empty;
+        var prefixGap = string.IsNullOrEmpty(label) ? string.Empty : " ";
+        var line = $"{styledLabel}{prefixGap}{string.Join(", ", styledNames)}{moreText}";
+
+        return Plugin.Settings.PreventSourceLineWrapping.Value
+            ? $"<nobr>{line}</nobr>"
+            : line;
+    }
+
+    private static List<ItemSourceContributor> GetDisplayedModifiers(ItemSourceEntry source)
+    {
+        var contributors = new List<ItemSourceContributor>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var contributor in source.ModifiedBy ?? new List<ItemSourceContributor>())
+        {
+            if (string.IsNullOrWhiteSpace(contributor.ModName))
+            {
+                continue;
+            }
+
+            if (Plugin.Settings.IsModHidden(contributor.ModFolder, contributor.ModName))
+            {
+                continue;
+            }
+
+            var key = string.IsNullOrWhiteSpace(contributor.ModFolder)
+                ? contributor.ModName
+                : contributor.ModFolder;
+            if (!seen.Add(key))
+            {
+                continue;
+            }
+
+            contributors.Add(contributor);
+        }
+
+        return contributors;
+    }
+
+    private static string ApplyLabelStyle(string text)
+    {
+        return ApplyStyle(
+            text,
             Plugin.Settings.PrefixColor.Value,
             Plugin.Settings.PrefixBold.Value,
             Plugin.Settings.PrefixItalic.Value,
             Plugin.Settings.PrefixUnderline.Value);
-        var styledModName = ApplyStyle(
-            modName,
+    }
+
+    private static string ApplyModNameStyle(string text)
+    {
+        return ApplyStyle(
+            text,
             Plugin.Settings.ModNameColor.Value,
             Plugin.Settings.ModNameBold.Value,
             Plugin.Settings.ModNameItalic.Value,
             Plugin.Settings.ModNameUnderline.Value);
-        var confidence = Plugin.Settings.IncludeConfidence.Value && source is not null
-            ? $" <size=75%>({SanitizeRichText(source.Confidence)})</size>"
-            : string.Empty;
-        var prefixGap = string.IsNullOrEmpty(label) ? string.Empty : " ";
-
-        var line = $"{styledLabel}{prefixGap}{styledModName}{confidence}";
-        return Plugin.Settings.PreventSourceLineWrapping.Value
-            ? $"<nobr>{line}</nobr>"
-            : line;
     }
 
     private static void EnsureTooltipWidth(ref float? maxWidth)

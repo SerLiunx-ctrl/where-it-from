@@ -57,7 +57,8 @@ public static class ItemSourceMapService
                 _loaded = true;
             }
 
-            _logger?.LogInfo($"WhereItFrom loaded {response.Items.Count} item source mappings.");
+            var registeredModCount = Plugin.Settings.RegisterSourceMods(response.Items.Values);
+            _logger?.LogInfo($"WhereItFrom loaded {response.Items.Count} item source mappings and registered {registeredModCount} mod configuration entries.");
         }
         catch (Exception exception)
         {

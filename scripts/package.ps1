@@ -21,14 +21,21 @@ $serverProject = Join-Path $resolvedRoot "src\Server\WhereItFrom.Server.csproj"
 $clientProject = Join-Path $resolvedRoot "src\Client\WhereItFrom.Client.csproj"
 
 dotnet build $serverProject -c $Configuration
+if ($LASTEXITCODE -ne 0) {
+    throw "Server build failed with exit code $LASTEXITCODE"
+}
+
 dotnet build $clientProject -c $Configuration -p:SPTPath="$resolvedSpt"
+if ($LASTEXITCODE -ne 0) {
+    throw "Client build failed with exit code $LASTEXITCODE"
+}
 
 $serverDll = Join-Path $resolvedRoot "src\Server\bin\$Configuration\net9.0\WhereItFrom.Server.dll"
 $clientDll = Join-Path $resolvedRoot "src\Client\bin\$Configuration\netstandard2.1\WhereItFrom.Client.dll"
 
 $resolvedOutputDir = Join-Path $resolvedRoot $OutputDir
 $stageRoot = Join-Path $resolvedOutputDir "package"
-$packageFileName = "WhereItFrom-v1.0.1-SPT4.0.zip"
+$packageFileName = "WhereItFrom-v1.1.0-SPT4.0.zip"
 $zipPath = Join-Path $resolvedOutputDir $packageFileName
 
 New-Item -ItemType Directory -Force -Path $resolvedOutputDir | Out-Null
